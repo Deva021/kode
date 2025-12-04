@@ -6,12 +6,12 @@ import { PrimaryButton, OutlineButton } from '@/components/ui/buttons';
 
 const Navbar = () => {
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-slate-900/80 backdrop-blur-md supports-backdrop-filter:bg-slate-900/60">
-      <div className="container mx-auto flex h-24 items-center justify-between px-6">
+    <header className="sticky top-0 z-50 w-full border-b border-gray-200 bg-gray-100 backdrop-blur-md shadow-md">
+      <div className="container mx-auto flex h-28 items-center justify-between px-8">
         {/* Logo Section */}
         <div className="flex-1 flex justify-start">
           <Link href="/" className="group flex items-center gap-4">
-            <div className="relative h-16 w-16 transition-transform duration-300 group-hover:scale-110 group-hover:drop-shadow-[0_0_15px_rgba(59,130,246,0.6)]">
+            <div className="relative h-20 w-20 transition-transform duration-300 group-hover:scale-110 group-hover:drop-shadow-[0_0_15px_rgba(59,130,246,0.6)]">
                <Image
                 src="/logo.png"
                 alt="BusDispatcher Logo"
@@ -20,7 +20,7 @@ const Navbar = () => {
                 priority
               />
             </div>
-            <span className="text-2xl font-bold text-white tracking-tight transition-colors group-hover:text-blue-400">
+            <span className="text-3xl font-bold text-gray-900 tracking-tight transition-colors group-hover:text-blue-600">
               BusDispatcher
             </span>
           </Link>
@@ -35,8 +35,8 @@ const Navbar = () => {
 
         {/* Auth Buttons - Right Aligned */}
         <div className="flex-1 flex justify-end items-center gap-4">
-          <OutlineButton className="btn-sm border-slate-600 text-slate-200 hover:bg-white hover:text-slate-900 hover:border-white transition-all duration-300">Log in</OutlineButton>
-          <PrimaryButton className="btn-sm bg-blue-600 hover:bg-blue-500 border-none text-white shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.5)] transition-all duration-300">Sign up</PrimaryButton>
+          <OutlineButton className="btn-md border-blue-600 text-blue-600 hover:bg-blue-50 hover:border-blue-700 transition-all duration-300">Log in</OutlineButton>
+          <PrimaryButton className="btn-md bg-blue-600 text-white hover:bg-blue-700 border-none shadow-lg hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-300 font-semibold">Sign up</PrimaryButton>
         </div>
       </div>
     </header>
