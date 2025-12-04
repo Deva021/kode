@@ -28,8 +28,7 @@ const Navbar = () => {
 
         {/* Navigation Links - Centered */}
         <nav className="hidden md:flex flex-1 justify-center items-center gap-10">
-          <LinkItem href="/dashboard">Dashboard</LinkItem>
-          <LinkItem href="/routes">Routes</LinkItem>
+          <LinkItem href="/">Home</LinkItem>
           <LinkItem href="/schedule">Schedule</LinkItem>
         </nav>
 
