@@ -5,7 +5,9 @@
 ### Tables
 
 #### `routes`
+
 Stores bus route definitions.
+
 - `id`: `bigint` (Primary Key, Identity)
 - `origin`: `text`
 - `destination`: `text`
@@ -13,7 +15,9 @@ Stores bus route definitions.
 - `created_at`: `timestamptz`
 
 #### `schedules`
+
 Specific trips for a route.
+
 - `id`: `bigint` (Primary Key, Identity)
 - `route_id`: `bigint` (Foreign Key -> `routes.id`)
 - `departure_time`: `timestamptz`
@@ -23,7 +27,9 @@ Specific trips for a route.
 - `created_at`: `timestamptz`
 
 #### `tickets`
+
 Passenger bookings.
+
 - `id`: `bigint` (Primary Key, Identity)
 - `schedule_id`: `bigint` (Foreign Key -> `schedules.id`)
 - `passenger_name`: `text`
