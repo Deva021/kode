@@ -119,3 +119,77 @@ export async function searchDestinations(query: string): Promise<string[]> {
   const uniqueDestinations = [...new Set(data.map(r => r.destination))];
   return uniqueDestinations;
 }
+
+/**
+ * Fetch all schedules with optional filtering and pagination
+ * @param destination - Optional destination filter
+ * @param departureDate - Optional departure date filter (YYYY-MM-DD format)
+ * @param page - Page number (1-indexed, default 1)
+ * @param limit - Items per page (default 10)
+ */
+export async function getAllSchedules(
+  destination?: string,
+  departureDate?: string,
+  page: number = 1,
+  limit: number = 10
+): Promise<{ data: ScheduleWithRoute[]; total: number }> {
+  try {
+    // Calculate range for pagination
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
+    // Build the query
+    let query = supabase
+      .from('schedules')
+      .select(`
+        *,
+        route:routes(*)
+      `, { count: 'exact' })
+      .gte('departure_time', new Date().toISOString())
+      .order('departure_time', { ascending: true });
+
+    // Filter by destination if provided
+    if (destination && destination.trim() !== '') {
+      query = query.ilike('route.destination', `%${destination}%`);
+    }
+
+    // Filter by departure date if provided
+    if (departureDate && departureDate.trim() !== '') {
+      const startOfDay = new Date(departureDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      
+      const endOfDay = new Date(departureDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      query = query
+        .gte('departure_time', startOfDay.toISOString())
+        .lte('departure_time', endOfDay.toISOString());
+    }
+
+    // Apply pagination
+    query = query.range(from, to);
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      console.error('Error fetching all schedules:', error);
+      return { data: [], total: 0 };
+    }
+
+    if (!data) return { data: [], total: 0 };
+
+    // Map to include unbooked_seats
+    const schedules: ScheduleWithRoute[] = data
+      .filter(schedule => schedule.route)
+      .map(schedule => ({
+        ...schedule,
+        route: schedule.route!,
+        unbooked_seats: schedule.total_seats - schedule.booked_seats,
+      }));
+
+    return { data: schedules, total: count || 0 };
+  } catch (err) {
+    console.error('Unexpected error:', err);
+    return { data: [], total: 0 };
+  }
+}
