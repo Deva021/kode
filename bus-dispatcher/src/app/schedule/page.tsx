@@ -2,7 +2,7 @@ import React from 'react';
 import { getAllSchedules } from '@/lib/api';
 import ScheduleContainer from '@/components/features/schedule/ScheduleContainer';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 30;
 
 export default async function SchedulePage() {
   // Fetch initial data on the server (Page 1, no filters)
