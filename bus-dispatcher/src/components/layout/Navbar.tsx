@@ -1,45 +1,56 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
-import LinkItem from '../ui/LinkItem';
+import { Bus, User, LogOut } from 'lucide-react';
 import { PrimaryButton, OutlineButton } from '@/components/ui/buttons';
+import LinkItem from '@/components/ui/LinkItem';
+import { useAuth } from '@/context/AuthContext';
 
-const Navbar = () => {
+export default function Navbar() {
+  const { user, signOut } = useAuth();
+
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-gray-200 bg-gray-100 backdrop-blur-md shadow-md">
-      <div className="container mx-auto flex h-28 items-center justify-between px-8">
-        {/* Logo Section */}
-        <div className="flex-1 flex justify-start">
-          <Link href="/" className="group flex items-center gap-4">
-            <div className="relative h-20 w-20 transition-transform duration-300 group-hover:scale-110 group-hover:drop-shadow-[0_0_15px_rgba(59,130,246,0.6)]">
-               <Image
-                src="/logo.png"
-                alt="BusDispatcher Logo"
-                fill
-                className="object-contain"
-                priority
-              />
-            </div>
-            <span className="text-3xl font-bold text-gray-900 tracking-tight transition-colors group-hover:text-blue-600">
-              BusDispatcher
-            </span>
-          </Link>
-        </div>
+    <nav className="fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 z-50">
+      <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
+        {/* Logo */}
+        <Link href="/" className="flex items-center gap-2 text-blue-600 hover:opacity-90 transition-opacity">
+          <Bus size={28} />
+          <span className="text-xl font-bold tracking-tight">BusDispatcher</span>
+        </Link>
 
-        {/* Navigation Links - Centered */}
-        <nav className="hidden md:flex flex-1 justify-center items-center gap-10">
+        {/* Navigation Links */}
+        <div className="hidden md:flex items-center gap-8">
           <LinkItem href="/">Home</LinkItem>
           <LinkItem href="/schedule">Schedule</LinkItem>
-        </nav>
+          <LinkItem href="/contact">Contact</LinkItem>
+        </div>
 
-        {/* Auth Buttons - Right Aligned */}
-        <div className="flex-1 flex justify-end items-center gap-4">
-          <OutlineButton className="btn-md border-blue-600 text-blue-600 hover:bg-blue-50 hover:border-blue-700 transition-all duration-300">Log in</OutlineButton>
-          <PrimaryButton className="btn-md bg-blue-600 text-white hover:bg-blue-700 border-none shadow-lg hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-300 font-semibold">Sign up</PrimaryButton>
+        {/* Auth Buttons */}
+        <div className="flex items-center gap-3">
+          {user ? (
+            <div className="flex items-center gap-4">
+              <div className="hidden md:flex items-center gap-2 text-sm font-medium text-gray-700">
+                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                  <User size={16} />
+                </div>
+                <span>Agent</span>
+              </div>
+              <OutlineButton onClick={signOut} className="flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50">
+                <LogOut size={16} />
+                <span className="hidden sm:inline">Logout</span>
+              </OutlineButton>
+            </div>
+          ) : (
+            <Link href="/login">
+              <PrimaryButton className="flex items-center gap-2">
+                <User size={18} />
+                <span>Agent Login</span>
+              </PrimaryButton>
+            </Link>
+          )}
         </div>
       </div>
-    </header>
+    </nav>
   );
-};
-
-export default Navbar;
+}

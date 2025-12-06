@@ -10,6 +10,8 @@ import { PrimaryButton, OutlineButton } from '@/components/ui/buttons';
 import { ArrowLeft, CheckCircle, AlertCircle, User, Shield, Ticket, Search } from 'lucide-react';
 import SeatMap from './SeatMap';
 import clsx from 'clsx';
+import { useAuth } from '@/context/AuthContext';
+
 
 // Validation Schemas
 const reservationSchema = z.object({
@@ -31,11 +33,20 @@ interface BookingFormProps {
 }
 
 
-
 export default function BookingForm({ schedule }: BookingFormProps) {
   const router = useRouter();
-  // Set initial tab
+  const { user } = useAuth();
+  
+  // Set initial tab based on auth state
   const [activeTab, setActiveTab] = useState<'reservation' | 'confirmation'>('reservation');
+
+  useEffect(() => {
+    if (user) {
+      setActiveTab('confirmation');
+    } else {
+      setActiveTab('reservation');
+    }
+  }, [user]);
   
   // Reservation State
   const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
@@ -195,31 +206,33 @@ export default function BookingForm({ schedule }: BookingFormProps) {
 
   return (
     <div className="max-w-4xl mx-auto">
-      {/* Tabs */}
-      <div className="flex justify-center mb-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-1 flex gap-1">
-          <button
-            onClick={() => setActiveTab('reservation')}
-            className={clsx(
-              'px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors',
-              activeTab === 'reservation' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
-            )}
-          >
-            <User size={16} />
-            Customer Reservation
-          </button>
-          <button
-            onClick={() => setActiveTab('confirmation')}
-            className={clsx(
-              'px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors',
-              activeTab === 'confirmation' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
-            )}
-          >
-            <Shield size={16} />
-            Agent Confirmation
-          </button>
+      {/* Tabs - Only show if user is logged in (Agent) */}
+      {user && (
+        <div className="flex justify-center mb-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-1 flex gap-1">
+            <button
+              onClick={() => setActiveTab('reservation')}
+              className={clsx(
+                'px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors',
+                activeTab === 'reservation' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
+              )}
+            >
+              <User size={16} />
+              Customer Reservation
+            </button>
+            <button
+              onClick={() => setActiveTab('confirmation')}
+              className={clsx(
+                'px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors',
+                activeTab === 'confirmation' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
+              )}
+            >
+              <Shield size={16} />
+              Agent Confirmation
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200 flex flex-col md:flex-row min-h-[500px]">
         {/* Left Side: Seat Map (Only for Reservation) */}
