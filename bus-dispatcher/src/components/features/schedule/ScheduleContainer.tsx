@@ -5,45 +5,49 @@ import { ScheduleWithRoute, getAllSchedules } from '@/lib/api';
 import ScheduleFilters from './ScheduleFilters';
 import ScheduleTable from './ScheduleTable';
 import Pagination from '@/components/ui/Pagination';
+import BookingModal from '../booking/BookingModal';
+
+const LIMIT = 4;
 
 interface ScheduleContainerProps {
-  initialSchedules: ScheduleWithRoute[];
+  initialData: ScheduleWithRoute[];
   initialTotal: number;
 }
 
-export default function ScheduleContainer({ initialSchedules, initialTotal }: ScheduleContainerProps) {
-  const [schedules, setSchedules] = useState<ScheduleWithRoute[]>(initialSchedules);
+export default function ScheduleContainer({ initialData, initialTotal }: ScheduleContainerProps) {
+  const [schedules, setSchedules] = useState<ScheduleWithRoute[]>(initialData);
   const [total, setTotal] = useState(initialTotal);
   const [loading, setLoading] = useState(false);
   
-  // Filter states
+  // Filter State
   const [destination, setDestination] = useState('');
-  const [departureDate, setDepartureDate] = useState('');
+  const [date, setDate] = useState('');
   const [page, setPage] = useState(1);
-  const LIMIT = 4;
 
-  // Fetch data when filters or page change
-  useEffect(() => {
-    // Skip initial fetch since we have server data
-    // Only fetch if filters or page have changed from initial state
-    if (page === 1 && !destination && !departureDate && schedules === initialSchedules) {
-      return;
-    }
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedSchedule, setSelectedSchedule] = useState<ScheduleWithRoute | null>(null);
 
-    const fetchData = async () => {
-      setLoading(true);
-      const { data, total } = await getAllSchedules(destination, departureDate, page, LIMIT);
+  const fetchSchedules = async () => {
+    setLoading(true);
+    try {
+      const { data, total } = await getAllSchedules(destination, date, page, LIMIT);
       setSchedules(data);
       setTotal(total);
+    } catch (error) {
+      console.error('Failed to fetch schedules', error);
+    } finally {
       setLoading(false);
-    };
+    }
+  };
 
-    fetchData();
-  }, [destination, departureDate, page]);
+  useEffect(() => {
+    fetchSchedules();
+  }, [destination, date, page]);
 
-  const handleFilterChange = (newDest: string, newDate: string) => {
-    setDestination(newDest);
-    setDepartureDate(newDate);
+  const handleFilterChange = (newDestination: string, newDate: string) => {
+    setDestination(newDestination);
+    setDate(newDate);
     setPage(1); // Reset to first page on filter change
   };
 
@@ -51,26 +55,34 @@ export default function ScheduleContainer({ initialSchedules, initialTotal }: Sc
     setPage(newPage);
   };
 
-  const totalPages = Math.ceil(total / LIMIT);
+  const handleBook = (schedule: ScheduleWithRoute) => {
+    setSelectedSchedule(schedule);
+    setIsModalOpen(true);
+  };
 
   return (
-    <div>
+    <div className="space-y-6">
       <ScheduleFilters onFilterChange={handleFilterChange} />
+      
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <ScheduleTable 
+          schedules={schedules} 
+          loading={loading} 
+          onBook={handleBook}
+        />
+      </div>
 
-      {loading ? (
-        <div className="flex justify-center items-center py-20 bg-white rounded-lg border border-gray-200">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-600"></div>
-        </div>
-      ) : (
-        <>
-          <ScheduleTable schedules={schedules} />
-          <Pagination 
-            currentPage={page} 
-            totalPages={totalPages} 
-            onPageChange={handlePageChange} 
-          />
-        </>
-      )}
+      <Pagination
+        currentPage={page}
+        totalPages={Math.ceil(total / LIMIT)}
+        onPageChange={handlePageChange}
+      />
+
+      <BookingModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        schedule={selectedSchedule} 
+      />
     </div>
   );
 }
