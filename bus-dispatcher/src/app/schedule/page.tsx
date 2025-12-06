@@ -14,7 +14,7 @@ export default async function SchedulePage() {
         <h1 className="text-4xl font-bold text-gray-900 mb-8">Bus Schedules</h1>
         
         <ScheduleContainer 
-          initialSchedules={data} 
+          initialData={data} 
           initialTotal={total} 
         />
       </div>

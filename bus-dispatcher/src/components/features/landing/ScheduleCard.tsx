@@ -1,66 +1,99 @@
-import React from 'react';
-import { Calendar, MapPin, DollarSign, Bus, AlertCircle } from 'lucide-react';
+'use client';
+
+import React, { useState } from 'react';
 import { ScheduleWithRoute } from '@/lib/api';
+import { Clock, MapPin, Bus, Users } from 'lucide-react';
 import { PrimaryButton } from '@/components/ui/buttons';
-import { format } from 'date-fns';
+import BookingModal from '../booking/BookingModal';
+import BookButton from '../schedule/BookButton';
 
 interface ScheduleCardProps {
   schedule: ScheduleWithRoute;
-  onBook: (scheduleId: number) => void;
 }
 
-export default function ScheduleCard({ schedule, onBook }: ScheduleCardProps) {
-  const { route, departure_time, bus_plate_number, unbooked_seats } = schedule;
-  const isLowSeats = unbooked_seats < 5;
+export default function ScheduleCard({ schedule }: ScheduleCardProps) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { route, departure_time, bus_plate_number, total_seats, booked_seats } = schedule;
+  const unbooked_seats = total_seats - booked_seats;
+
+  const handleBook = () => {
+    setIsModalOpen(true);
+  };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 p-6">
-      {/* Destination Header */}
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <MapPin size={24} className="text-blue-600" />
-            {route.destination}
-          </h3>
-          <p className="text-sm text-gray-500 mt-1">From: {route.origin}</p>
-        </div>
-        {isLowSeats && (
-          <div className="flex items-center gap-1 bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-medium">
-            <AlertCircle size={16} />
-            Only {unbooked_seats} left!
+    <>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow duration-300 flex flex-col h-full">
+        {/* Header with Route */}
+        <div className="bg-blue-600 p-4 text-white">
+          <div className="flex items-center gap-2 mb-1 opacity-90 text-sm">
+            <MapPin size={16} />
+            <span>{route.origin}</span>
           </div>
-        )}
+          <h3 className="text-xl font-bold">{route.destination}</h3>
+        </div>
+
+        {/* Body */}
+        <div className="p-5 flex-1 flex flex-col gap-4">
+          {/* Time & Date */}
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-blue-50 rounded-lg text-blue-600 mt-1">
+              <Clock size={20} />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Departure</p>
+              <p className="font-semibold text-gray-900">
+                {new Date(departure_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </p>
+              <p className="text-xs text-gray-500">
+                {new Date(departure_time).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
+              </p>
+            </div>
+          </div>
+
+          {/* Bus Info */}
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-purple-50 rounded-lg text-purple-600">
+              <Bus size={20} />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Bus Plate</p>
+              <p className="font-medium text-gray-900">{bus_plate_number}</p>
+            </div>
+          </div>
+
+          {/* Seats */}
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${unbooked_seats < 5 ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
+              <Users size={20} />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Availability</p>
+              <p className={`font-medium ${unbooked_seats < 5 ? 'text-red-600' : 'text-green-600'}`}>
+                {unbooked_seats} seats left
+              </p>
+            </div>
+          </div>
+
+          {/* Footer / Action */}
+          <div className="mt-auto pt-4 border-t border-gray-100 flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-500">Price</p>
+              <p className="text-lg font-bold text-blue-600">{route.price} ETB</p>
+            </div>
+            <BookButton 
+              price={route.price}
+              unbookedSeats={unbooked_seats}
+              onBook={handleBook}
+            />
+          </div>
+        </div>
       </div>
 
-      {/* Schedule Details */}
-      <div className="space-y-3 mb-6">
-        <div className="flex items-center gap-3 text-gray-700">
-          <Calendar size={18} className="text-gray-400" />
-          <span className="font-medium">
-            {format(new Date(departure_time), 'PPP p')}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-3 text-gray-700">
-          <Bus size={18} className="text-gray-400" />
-          <span>Bus: {bus_plate_number}</span>
-        </div>
-
-        <div className="flex items-center gap-3 text-gray-700">
-          <DollarSign size={18} className="text-gray-400" />
-          <span className="text-xl font-bold text-green-600">
-            {route.price} ETB
-          </span>
-        </div>
-      </div>
-
-      {/* Book Button */}
-      <PrimaryButton
-        onClick={() => onBook(schedule.id)}
-        className={`w-full ${isLowSeats ? 'bg-red-600 hover:bg-red-700 shadow-red-500/30' : 'bg-green-600 hover:bg-green-700 shadow-green-500/30'} border-none text-white shadow-lg hover:shadow-xl transition-all duration-300`}
-      >
-        Book Now
-      </PrimaryButton>
-    </div>
+      <BookingModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        schedule={schedule} 
+      />
+    </>
   );
 }

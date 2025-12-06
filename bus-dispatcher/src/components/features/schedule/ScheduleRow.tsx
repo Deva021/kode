@@ -5,32 +5,44 @@ import BookButton from './BookButton';
 
 interface ScheduleRowProps {
   schedule: ScheduleWithRoute;
-  onBook: (scheduleId: number) => void;
-  isEven: boolean;
+  onBook: (schedule: ScheduleWithRoute) => void;
 }
 
-export default function ScheduleRow({ schedule, onBook, isEven }: ScheduleRowProps) {
-  const { route, departure_time, bus_plate_number, unbooked_seats, total_seats } = schedule;
+export default function ScheduleRow({ schedule, onBook }: ScheduleRowProps) {
+  const { route, departure_time, bus_plate_number, total_seats, booked_seats } = schedule;
+  const unbooked_seats = total_seats - booked_seats;
 
   return (
-    <tr className={`${isEven ? 'bg-gray-50' : 'bg-white'} hover:bg-blue-50 transition-colors`}>
+    <tr className={`hover:bg-blue-50 transition-colors`}>
       <td className="px-6 py-4 text-sm font-medium text-gray-900">{route.destination}</td>
       <td className="px-6 py-4 text-sm text-gray-700">{route.origin}</td>
       <td className="px-6 py-4 text-sm text-gray-700">
-        {format(new Date(departure_time), 'PPP p')}
+        {new Date(departure_time).toLocaleString([], { 
+          weekday: 'short', 
+          month: 'short', 
+          day: 'numeric', 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        })}
       </td>
       <td className="px-6 py-4 text-sm text-gray-700">{bus_plate_number}</td>
-      <td className="px-6 py-4 text-sm">
-        <span className={`font-semibold ${unbooked_seats < 5 ? 'text-red-600' : 'text-green-600'}`}>
+      <td className="px-6 py-4 text-sm text-gray-700">
+        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+          unbooked_seats > 5 ? 'bg-green-100 text-green-800' : 
+          unbooked_seats > 0 ? 'bg-yellow-100 text-yellow-800' : 
+          'bg-red-100 text-red-800'
+        }`}>
           {unbooked_seats} / {total_seats}
         </span>
       </td>
-      <td className="px-6 py-4 text-sm font-bold text-green-600">{route.price} ETB</td>
+      <td className="px-6 py-4 text-sm text-gray-700 font-medium text-green-600">
+        {route.price} ETB
+      </td>
       <td className="px-6 py-4">
-        <BookButton
-          scheduleId={schedule.id}
+        <BookButton 
+          price={route.price} 
           unbookedSeats={unbooked_seats}
-          onBook={onBook}
+          onBook={() => onBook(schedule)} 
         />
       </td>
     </tr>
