@@ -1,63 +1,93 @@
--- Populate Database with Sample Data
+-- ==========================================
+-- POPULATE DATABASE SCRIPT
+-- ==========================================
 
--- 1. Insert 5 Major Ethiopian Routes
-INSERT INTO public.routes (origin, destination, price) VALUES
-('Addis Ababa', 'Hawassa', 350.00),
-('Addis Ababa', 'Bahir Dar', 550.00),
-('Addis Ababa', 'Gondar', 700.00),
-('Addis Ababa', 'Mekelle', 900.00),
-('Addis Ababa', 'Dire Dawa', 450.00);
+-- 1. Insert 8 Major Ethiopian Routes
+INSERT INTO routes (origin, destination, price) VALUES
+('Addis Ababa', 'Bahir Dar', 850.00),
+('Addis Ababa', 'Gondar', 1100.00),
+('Addis Ababa', 'Hawassa', 450.00),
+('Addis Ababa', 'Mekelle', 1300.00),
+('Addis Ababa', 'Dire Dawa', 600.00),
+('Addis Ababa', 'Jimma', 550.00),
+('Addis Ababa', 'Adama', 200.00),
+('Addis Ababa', 'Arba Minch', 700.00);
 
--- 2. Insert 10 Schedules for this week (Assuming current date is around Dec 3, 2025)
--- We will dynamically fetch route_ids to ensure foreign key constraints are met.
--- Using a DO block to handle variables, or just simple INSERTs with subqueries.
--- Simple INSERTs with subqueries are more portable for the SQL Editor.
+-- 2. Insert 40 Schedules for the Next 7 Days
+-- We use a CTE (Common Table Expression) to generate random schedules linked to the routes above
+INSERT INTO schedules (route_id, departure_time, bus_plate_number, total_seats, booked_seats)
+SELECT 
+  r.id,
+  (NOW() + (floor(random() * 7) || ' days')::interval + (floor(random() * 10 + 6) || ' hours')::interval)::timestamptz, -- Random time between 6 AM and 4 PM next 7 days
+  'ET-' || floor(random() * 90000 + 10000)::text, -- Random Plate Number
+  50, -- Total Seats
+  0   -- Initial booked seats (will be updated by trigger or manual update)
+FROM routes r
+CROSS JOIN generate_series(1, 5); -- Generate 5 schedules per route (8 * 5 = 40 schedules)
 
-INSERT INTO public.schedules (route_id, departure_time, bus_plate_number, total_seats, booked_seats) VALUES
-((SELECT id FROM public.routes WHERE destination = 'Hawassa' LIMIT 1), '2025-12-03 06:00:00+03', 'ET-12345', 40, 0),
-((SELECT id FROM public.routes WHERE destination = 'Bahir Dar' LIMIT 1), '2025-12-03 07:00:00+03', 'ET-67890', 50, 0),
-((SELECT id FROM public.routes WHERE destination = 'Gondar' LIMIT 1), '2025-12-04 06:30:00+03', 'ET-11223', 45, 0),
-((SELECT id FROM public.routes WHERE destination = 'Mekelle' LIMIT 1), '2025-12-04 05:00:00+03', 'ET-44556', 50, 0),
-((SELECT id FROM public.routes WHERE destination = 'Dire Dawa' LIMIT 1), '2025-12-05 08:00:00+03', 'ET-77889', 35, 0),
-((SELECT id FROM public.routes WHERE destination = 'Hawassa' LIMIT 1), '2025-12-05 14:00:00+03', 'ET-99001', 40, 0),
-((SELECT id FROM public.routes WHERE destination = 'Bahir Dar' LIMIT 1), '2025-12-06 07:00:00+03', 'ET-22334', 50, 0),
-((SELECT id FROM public.routes WHERE destination = 'Gondar' LIMIT 1), '2025-12-06 06:30:00+03', 'ET-55667', 45, 0),
-((SELECT id FROM public.routes WHERE destination = 'Mekelle' LIMIT 1), '2025-12-07 05:00:00+03', 'ET-88990', 50, 0),
-((SELECT id FROM public.routes WHERE destination = 'Dire Dawa' LIMIT 1), '2025-12-07 08:00:00+03', 'ET-12121', 35, 0);
+-- 3. Insert 60 Random Bookings
+-- We randomly assign passengers to the newly created schedules
+INSERT INTO tickets (schedule_id, passenger_name, seat_number, status, reservation_token, reservation_expires_at)
+SELECT 
+  s.id,
+  'Passenger ' || floor(random() * 1000)::text,
+  floor(random() * 50 + 1)::int, -- Random Seat 1-50
+  CASE WHEN random() < 0.8 THEN 'booked' ELSE 'reserved' END, -- 80% booked, 20% reserved
+  substring(md5(random()::text) from 1 for 6), -- Random Token
+  NOW() + interval '1 day'
+FROM schedules s
+ORDER BY random()
+LIMIT 60;
 
--- 3. Insert 20 Random Existing Bookings
--- We'll just pick some schedules and add tickets.
--- Note: In a real scenario, we should update booked_seats in schedules, but for this script we'll just insert tickets.
--- If there's a trigger, it might update booked_seats automatically. If not, we might want to update it manually.
--- For simplicity and as per request "populate ... bookings", we will just insert tickets.
-
-INSERT INTO public.tickets (schedule_id, passenger_name, seat_number, status) VALUES
-((SELECT id FROM public.schedules WHERE bus_plate_number = 'ET-12345' LIMIT 1), 'Abebe Bikila', 1, 'booked'),
-((SELECT id FROM public.schedules WHERE bus_plate_number = 'ET-12345' LIMIT 1), 'Kebede Michael', 2, 'booked'),
-((SELECT id FROM public.schedules WHERE bus_plate_number = 'ET-67890' LIMIT 1), 'Almaz Ayana', 5, 'booked'),
-((SELECT id FROM public.schedules WHERE bus_plate_number = 'ET-67890' LIMIT 1), 'Tirunesh Dibaba', 6, 'booked'),
-((SELECT id FROM public.schedules WHERE bus_plate_number = 'ET-11223' LIMIT 1), 'Haile Gebrselassie', 10, 'booked'),
-((SELECT id FROM public.schedules WHERE bus_plate_number = 'ET-11223' LIMIT 1), 'Kenenisa Bekele', 11, 'booked'),
-((SELECT id FROM public.schedules WHERE bus_plate_number = 'ET-44556' LIMIT 1), 'Derartu Tulu', 3, 'booked'),
-((SELECT id FROM public.schedules WHERE bus_plate_number = 'ET-44556' LIMIT 1), 'Fatuma Roba', 4, 'booked'),
-((SELECT id FROM public.schedules WHERE bus_plate_number = 'ET-77889' LIMIT 1), 'Miruts Yifter', 1, 'booked'),
-((SELECT id FROM public.schedules WHERE bus_plate_number = 'ET-77889' LIMIT 1), 'Meseret Defar', 2, 'booked'),
-((SELECT id FROM public.schedules WHERE bus_plate_number = 'ET-99001' LIMIT 1), 'Genzebe Dibaba', 15, 'booked'),
-((SELECT id FROM public.schedules WHERE bus_plate_number = 'ET-99001' LIMIT 1), 'Sileshi Sihine', 16, 'booked'),
-((SELECT id FROM public.schedules WHERE bus_plate_number = 'ET-22334' LIMIT 1), 'Gezahegne Abera', 20, 'booked'),
-((SELECT id FROM public.schedules WHERE bus_plate_number = 'ET-22334' LIMIT 1), 'Million Wolde', 21, 'booked'),
-((SELECT id FROM public.schedules WHERE bus_plate_number = 'ET-55667' LIMIT 1), 'Berhane Adere', 8, 'booked'),
-((SELECT id FROM public.schedules WHERE bus_plate_number = 'ET-55667' LIMIT 1), 'Gete Wami', 9, 'booked'),
-((SELECT id FROM public.schedules WHERE bus_plate_number = 'ET-88990' LIMIT 1), 'Tiki Gelana', 12, 'booked'),
-((SELECT id FROM public.schedules WHERE bus_plate_number = 'ET-88990' LIMIT 1), 'Mamo Wolde', 13, 'booked'),
-((SELECT id FROM public.schedules WHERE bus_plate_number = 'ET-12121' LIMIT 1), 'Addis Gezahegn', 4, 'booked'),
-((SELECT id FROM public.schedules WHERE bus_plate_number = 'ET-12121' LIMIT 1), 'Senbere Teferi', 5, 'booked');
-
--- Optional: Update booked_seats in schedules table to reflect the inserted tickets
-UPDATE public.schedules s
+-- 4. Sync Booked Seats Count
+-- Just in case the trigger didn't fire for bulk inserts or to be 100% sure
+UPDATE schedules s
 SET booked_seats = (
-    SELECT COUNT(*)
-    FROM public.tickets t
-    WHERE t.schedule_id = s.id
-    AND t.status = 'booked'
+  SELECT COUNT(*) 
+  FROM tickets t 
+  WHERE t.schedule_id = s.id AND t.status IN ('booked', 'reserved')
 );
+
+-- 5. Create 2 Test Agents
+-- WARNING: This inserts directly into auth.users. This usually works if pgcrypto is enabled.
+-- Passwords will be 'password123'
+
+-- Enable pgcrypto for hashing
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+DO $$
+DECLARE
+  agent1_id UUID := gen_random_uuid();
+  agent2_id UUID := gen_random_uuid();
+BEGIN
+  -- Agent 1: agent1@example.com
+  INSERT INTO auth.users (id, email, encrypted_password, email_confirmed_at, raw_user_meta_data)
+  VALUES (
+    agent1_id,
+    'agent1@example.com',
+    crypt('password123', gen_salt('bf')),
+    NOW(),
+    '{"full_name": "Test Agent 1"}'::jsonb
+  );
+
+  -- Profile for Agent 1 (Trigger might handle this, but we ensure role is 'agent')
+  INSERT INTO public.profiles (id, email, full_name, role)
+  VALUES (agent1_id, 'agent1@example.com', 'Test Agent 1', 'agent')
+  ON CONFLICT (id) DO UPDATE SET role = 'agent';
+
+  -- Agent 2: agent2@example.com
+  INSERT INTO auth.users (id, email, encrypted_password, email_confirmed_at, raw_user_meta_data)
+  VALUES (
+    agent2_id,
+    'agent2@example.com',
+    crypt('password123', gen_salt('bf')),
+    NOW(),
+    '{"full_name": "Test Agent 2"}'::jsonb
+  );
+
+  -- Profile for Agent 2
+  INSERT INTO public.profiles (id, email, full_name, role)
+  VALUES (agent2_id, 'agent2@example.com', 'Test Agent 2', 'agent')
+  ON CONFLICT (id) DO UPDATE SET role = 'agent';
+
+END $$;
