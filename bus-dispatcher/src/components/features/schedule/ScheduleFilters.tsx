@@ -1,18 +1,24 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Calendar, MapPin } from 'lucide-react';
 import { searchDestinations } from '@/lib/api';
 
-interface ScheduleFiltersProps {
-  onFilterChange: (destination: string, date: string) => void;
-}
-
-export default function ScheduleFilters({ onFilterChange }: ScheduleFiltersProps) {
-  const [destination, setDestination] = useState('');
-  const [departureDate, setDepartureDate] = useState('');
+export default function ScheduleFilters() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  const [destination, setDestination] = useState(searchParams.get('destination') || '');
+  const [departureDate, setDepartureDate] = useState(searchParams.get('date') || '');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // Sync state with URL params
+  useEffect(() => {
+    setDestination(searchParams.get('destination') || '');
+    setDepartureDate(searchParams.get('date') || '');
+  }, [searchParams]);
 
   // Fetch destination suggestions
   useEffect(() => {
@@ -30,14 +36,64 @@ export default function ScheduleFilters({ onFilterChange }: ScheduleFiltersProps
     return () => clearTimeout(debounce);
   }, [destination]);
 
-  // Notify parent when filters change
+  const updateFilters = (newDestination: string, newDate: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    
+    if (newDestination) {
+      params.set('destination', newDestination);
+    } else {
+      params.delete('destination');
+    }
+
+    if (newDate) {
+      params.set('date', newDate);
+    } else {
+      params.delete('date');
+    }
+
+    // Reset to page 1 on filter change
+    params.set('page', '1');
+
+    router.push(`?${params.toString()}`);
+  };
+
+  const handleDestinationChange = (value: string) => {
+    setDestination(value);
+    setShowSuggestions(true);
+    // Debounce URL update for typing? Or just update on blur/enter?
+    // For now, let's update on blur or selection to avoid too many pushes, 
+    // but the previous implementation updated on change.
+    // To keep it responsive, maybe we wait for selection or explicit action?
+    // The previous one had a debounce on fetchSuggestions, but onFilterChange was called in useEffect [destination].
+    // So it was updating parent state on every keystroke.
+    // Updating URL on every keystroke is bad UX (history spam).
+    // Let's update URL only when a suggestion is selected or on blur/enter.
+    // But the user might just type "Bahir Dar" and not select.
+    // Let's add a "Search" button or update on debounce?
+    // The original code updated parent immediately.
+    // Let's use a debounce for the URL update.
+  };
+
+  // Debounced URL update for destination
   useEffect(() => {
-    onFilterChange(destination, departureDate);
-  }, [destination, departureDate, onFilterChange]);
+    const timer = setTimeout(() => {
+      if (destination !== (searchParams.get('destination') || '')) {
+        updateFilters(destination, departureDate);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [destination]);
+
+  // Immediate update for date
+  const handleDateChange = (value: string) => {
+    setDepartureDate(value);
+    updateFilters(destination, value);
+  };
 
   const handleSelectSuggestion = (dest: string) => {
     setDestination(dest);
     setShowSuggestions(false);
+    updateFilters(dest, departureDate);
   };
 
   return (
@@ -54,10 +110,7 @@ export default function ScheduleFilters({ onFilterChange }: ScheduleFiltersProps
           <input
             type="text"
             value={destination}
-            onChange={(e) => {
-              setDestination(e.target.value);
-              setShowSuggestions(true);
-            }}
+            onChange={(e) => handleDestinationChange(e.target.value)}
             onFocus={() => setShowSuggestions(true)}
             placeholder="Enter destination..."
             className="w-full text-gray-500 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -88,7 +141,7 @@ export default function ScheduleFilters({ onFilterChange }: ScheduleFiltersProps
           <input
             type="date"
             value={departureDate}
-            onChange={(e) => setDepartureDate(e.target.value)}
+            onChange={(e) => handleDateChange(e.target.value)}
             className="w-full text-gray-400 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
@@ -101,6 +154,7 @@ export default function ScheduleFilters({ onFilterChange }: ScheduleFiltersProps
             setDestination('');
             setDepartureDate('');
             setShowSuggestions(false);
+            updateFilters('', '');
           }}
           className="mt-4 text-sm text-blue-600 hover:text-blue-700 font-medium"
         >

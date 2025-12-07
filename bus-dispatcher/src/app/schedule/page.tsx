@@ -4,9 +4,20 @@ import ScheduleContainer from '@/components/features/schedule/ScheduleContainer'
 
 export const revalidate = 30;
 
-export default async function SchedulePage() {
-  // Fetch initial data on the server (Page 1, no filters)
-  const { data, total } = await getAllSchedules('', '', 1, 4);
+interface PageProps {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+export default async function SchedulePage({ searchParams }: PageProps) {
+  const resolvedParams = await searchParams;
+  
+  const destination = (resolvedParams.destination as string) || '';
+  const date = (resolvedParams.date as string) || '';
+  const page = parseInt((resolvedParams.page as string) || '1');
+  const limit = 4;
+
+  // Fetch data on the server based on URL params
+  const { data, total } = await getAllSchedules(destination, date, page, limit);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">

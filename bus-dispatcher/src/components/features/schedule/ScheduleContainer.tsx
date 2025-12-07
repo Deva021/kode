@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ScheduleWithRoute, getAllSchedules } from '@/lib/api';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { ScheduleWithRoute } from '@/lib/api';
 import ScheduleFilters from './ScheduleFilters';
 import ScheduleTable from './ScheduleTable';
 import Pagination from '@/components/ui/Pagination';
@@ -15,44 +16,27 @@ interface ScheduleContainerProps {
 }
 
 export default function ScheduleContainer({ initialData, initialTotal }: ScheduleContainerProps) {
-  const [schedules, setSchedules] = useState<ScheduleWithRoute[]>(initialData);
-  const [total, setTotal] = useState(initialTotal);
-  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const searchParams = useSearchParams();
   
-  // Filter State
-  const [destination, setDestination] = useState('');
-  const [date, setDate] = useState('');
-  const [page, setPage] = useState(1);
+  // Local state for schedules (initialized from server data, updated via realtime)
+  const [schedules, setSchedules] = useState<ScheduleWithRoute[]>(initialData);
+  
+  // Reset local state when server data changes (URL/Filter change)
+  useEffect(() => {
+    setSchedules(initialData);
+  }, [initialData]);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSchedule, setSelectedSchedule] = useState<ScheduleWithRoute | null>(null);
 
-  const fetchSchedules = async () => {
-    setLoading(true);
-    try {
-      const { data, total } = await getAllSchedules(destination, date, page, LIMIT);
-      setSchedules(data);
-      setTotal(total);
-    } catch (error) {
-      console.error('Failed to fetch schedules', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchSchedules();
-  }, [destination, date, page]);
-
-  const handleFilterChange = (newDestination: string, newDate: string) => {
-    setDestination(newDestination);
-    setDate(newDate);
-    setPage(1); // Reset to first page on filter change
-  };
+  const page = parseInt(searchParams.get('page') || '1');
 
   const handlePageChange = (newPage: number) => {
-    setPage(newPage);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', newPage.toString());
+    router.push(`?${params.toString()}`);
   };
 
   const handleBook = (schedule: ScheduleWithRoute) => {
@@ -62,19 +46,19 @@ export default function ScheduleContainer({ initialData, initialTotal }: Schedul
 
   return (
     <div className="space-y-6">
-      <ScheduleFilters onFilterChange={handleFilterChange} />
+      <ScheduleFilters />
       
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <ScheduleTable 
           schedules={schedules} 
-          loading={loading} 
+          loading={false} 
           onBook={handleBook}
         />
       </div>
 
       <Pagination
         currentPage={page}
-        totalPages={Math.ceil(total / LIMIT)}
+        totalPages={Math.ceil(initialTotal / LIMIT)}
         onPageChange={handlePageChange}
       />
 
