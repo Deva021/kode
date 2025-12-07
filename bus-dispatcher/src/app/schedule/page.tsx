@@ -13,8 +13,13 @@ export default async function SchedulePage({ searchParams }: PageProps) {
   
   const destination = (resolvedParams.destination as string) || '';
   const date = (resolvedParams.date as string) || '';
-  const page = parseInt((resolvedParams.page as string) || '1');
-  const limit = 4;
+  
+  // Check if filters are active
+  const isFiltered = destination !== '' || date !== '';
+  
+  // If filtered, show all results (limit 100), otherwise use pagination (limit 4)
+  const limit = isFiltered ? 100 : 4;
+  const page = isFiltered ? 1 : parseInt((resolvedParams.page as string) || '1');
 
   // Fetch data on the server based on URL params
   const { data, total } = await getAllSchedules(destination, date, page, limit);
@@ -26,7 +31,8 @@ export default async function SchedulePage({ searchParams }: PageProps) {
         
         <ScheduleContainer 
           initialData={data} 
-          initialTotal={total} 
+          initialTotal={total}
+          isFiltered={isFiltered}
         />
       </div>
     </div>

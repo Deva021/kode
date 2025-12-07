@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ScheduleWithRoute } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 import { Clock, MapPin, Bus, Users } from 'lucide-react';
 import { PrimaryButton } from '@/components/ui/buttons';
 import BookingModal from '../booking/BookingModal';
@@ -13,8 +14,34 @@ interface ScheduleCardProps {
 
 export default function ScheduleCard({ schedule }: ScheduleCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { route, departure_time, bus_plate_number, total_seats, booked_seats } = schedule;
-  const unbooked_seats = total_seats - booked_seats;
+  const [bookedSeats, setBookedSeats] = useState(schedule.booked_seats);
+  
+  const { route, departure_time, bus_plate_number, total_seats } = schedule;
+  const unbooked_seats = total_seats - bookedSeats;
+
+  // Realtime subscription for this specific schedule
+  useEffect(() => {
+    const channel = supabase
+      .channel(`schedule-${schedule.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'schedules',
+          filter: `id=eq.${schedule.id}`
+        },
+        (payload) => {
+          const updatedSchedule = payload.new as any;
+          setBookedSeats(updatedSchedule.booked_seats);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [schedule.id]);
 
   const handleBook = () => {
     setIsModalOpen(true);

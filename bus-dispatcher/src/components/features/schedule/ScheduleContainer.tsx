@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ScheduleWithRoute } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 import ScheduleFilters from './ScheduleFilters';
 import ScheduleTable from './ScheduleTable';
 import Pagination from '@/components/ui/Pagination';
@@ -13,9 +14,10 @@ const LIMIT = 4;
 interface ScheduleContainerProps {
   initialData: ScheduleWithRoute[];
   initialTotal: number;
+  isFiltered?: boolean;
 }
 
-export default function ScheduleContainer({ initialData, initialTotal }: ScheduleContainerProps) {
+export default function ScheduleContainer({ initialData, initialTotal, isFiltered = false }: ScheduleContainerProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -26,6 +28,41 @@ export default function ScheduleContainer({ initialData, initialTotal }: Schedul
   useEffect(() => {
     setSchedules(initialData);
   }, [initialData]);
+
+  // Realtime subscription for schedule updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('schedule-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'schedules'
+        },
+        (payload) => {
+          const updatedSchedule = payload.new as any;
+          
+          setSchedules((prevSchedules) =>
+            prevSchedules.map((schedule) => {
+              if (schedule.id === updatedSchedule.id) {
+                return {
+                  ...schedule,
+                  booked_seats: updatedSchedule.booked_seats,
+                  unbooked_seats: schedule.total_seats - updatedSchedule.booked_seats
+                };
+              }
+              return schedule;
+            })
+          );
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -56,11 +93,13 @@ export default function ScheduleContainer({ initialData, initialTotal }: Schedul
         />
       </div>
 
-      <Pagination
-        currentPage={page}
-        totalPages={Math.ceil(initialTotal / LIMIT)}
-        onPageChange={handlePageChange}
-      />
+      {!isFiltered && (
+        <Pagination
+          currentPage={page}
+          totalPages={Math.ceil(initialTotal / LIMIT)}
+          onPageChange={handlePageChange}
+        />
+      )}
 
       <BookingModal 
         isOpen={isModalOpen} 
