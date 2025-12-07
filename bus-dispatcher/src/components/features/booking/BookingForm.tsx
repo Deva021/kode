@@ -285,10 +285,10 @@ export default function BookingForm({ schedule }: BookingFormProps) {
             <form onSubmit={reservationForm.handleSubmit(onReservationSubmit)} className="space-y-5 flex-1 flex flex-col">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Passenger Name</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Passenger Name</label>
                   <input
                     {...reservationForm.register('passengerName')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-gray-900"
                     placeholder="Enter full name"
                   />
                   {reservationForm.formState.errors.passengerName && (
@@ -296,10 +296,10 @@ export default function BookingForm({ schedule }: BookingFormProps) {
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Phone Number</label>
                   <input
                     {...reservationForm.register('phoneNumber')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full px-4 py-2 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-gray-900"
                     placeholder="09..."
                   />
                   {reservationForm.formState.errors.phoneNumber && (
@@ -307,10 +307,10 @@ export default function BookingForm({ schedule }: BookingFormProps) {
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email (Optional)</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Email (Optional)</label>
                   <input
                     {...reservationForm.register('email')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-gray-900"
                     placeholder="name@example.com"
                   />
                   {reservationForm.formState.errors.email && (
@@ -348,10 +348,10 @@ export default function BookingForm({ schedule }: BookingFormProps) {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Reservation Token</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Reservation Token</label>
                     <input
                       {...confirmationForm.register('token')}
-                      className="w-full px-4 py-3 text-center text-2xl font-mono font-bold border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none uppercase tracking-widest"
+                      className="w-full px-4 py-3 text-center text-2xl font-mono font-bold border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none uppercase tracking-widest text-gray-900"
                       placeholder="XXXXXX"
                       maxLength={6}
                     />
