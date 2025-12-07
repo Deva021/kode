@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
-import { createReservation, confirmReservation, getReservationByToken, ScheduleWithRoute, getBookedSeats } from '@/lib/api';
+import { createReservation, createDirectBooking, confirmReservation, getReservationByToken, ScheduleWithRoute, getBookedSeats } from '@/lib/api';
 import { PrimaryButton, OutlineButton } from '@/components/ui/buttons';
 import { ArrowLeft, CheckCircle, AlertCircle, User, Shield, Ticket, Search } from 'lucide-react';
 import SeatMap from './SeatMap';
@@ -37,14 +37,12 @@ export default function BookingForm({ schedule }: BookingFormProps) {
   const router = useRouter();
   const { user } = useAuth();
   
-  // Set initial tab based on auth state
-  const [activeTab, setActiveTab] = useState<'reservation' | 'confirmation'>('reservation');
+  // Tab state for agents (direct booking vs confirmation)
+  const [activeTab, setActiveTab] = useState<'booking' | 'confirmation'>('booking');
 
   useEffect(() => {
     if (user) {
-      setActiveTab('confirmation');
-    } else {
-      setActiveTab('reservation');
+      setActiveTab('booking'); // Agents default to direct booking
     }
   }, [user]);
   
@@ -53,6 +51,7 @@ export default function BookingForm({ schedule }: BookingFormProps) {
   const [bookedSeats, setBookedSeats] = useState<number[]>([]);
   const [loadingSeats, setLoadingSeats] = useState(true);
   const [reservationSuccess, setReservationSuccess] = useState<{ token: string; seats: number[] } | null>(null);
+  const [directBookingSuccess, setDirectBookingSuccess] = useState(false);
   
   // Confirmation State
   const [foundReservation, setFoundReservation] = useState<{ tickets: any[] } | null>(null);
@@ -114,6 +113,35 @@ export default function BookingForm({ schedule }: BookingFormProps) {
       reservationForm.reset();
     } else {
       setError(result.error || 'Failed to create reservation.');
+    }
+
+    setIsSubmitting(false);
+  };
+
+  // Submit Direct Booking (Agent only)
+  const onDirectBookingSubmit = async (data: ReservationFormValues) => {
+    if (selectedSeats.length === 0) {
+      setError('Please select at least one seat.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    const result = await createDirectBooking(
+      schedule.id,
+      data.passengerName,
+      selectedSeats,
+      data.phoneNumber,
+      data.email
+    );
+
+    if (result.success) {
+      setDirectBookingSuccess(true);
+      setSelectedSeats([]);
+      reservationForm.reset();
+    } else {
+      setError(result.error || 'Failed to create booking.');
     }
 
     setIsSubmitting(false);
@@ -204,6 +232,26 @@ export default function BookingForm({ schedule }: BookingFormProps) {
     );
   }
 
+  // Render Direct Booking Success Screen
+  if (directBookingSuccess) {
+    return (
+      <div className="bg-white rounded-xl shadow-lg p-8 text-center max-w-md mx-auto border border-green-100">
+        <div className="flex justify-center mb-4">
+          <div className="bg-green-100 p-3 rounded-full">
+            <CheckCircle size={48} className="text-green-600" />
+          </div>
+        </div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Booking Confirmed!</h2>
+        <p className="text-gray-600 mb-6">
+          The seats have been successfully booked and confirmed.
+        </p>
+        <PrimaryButton onClick={() => setDirectBookingSuccess(false)} className="w-full justify-center">
+          Make Another Booking
+        </PrimaryButton>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto">
       {/* Tabs - Only show if user is logged in (Agent) */}
@@ -211,14 +259,14 @@ export default function BookingForm({ schedule }: BookingFormProps) {
         <div className="flex justify-center mb-6">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-1 flex gap-1">
             <button
-              onClick={() => setActiveTab('reservation')}
+              onClick={() => setActiveTab('booking')}
               className={clsx(
                 'px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors',
-                activeTab === 'reservation' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
+                activeTab === 'booking' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
               )}
             >
               <User size={16} />
-              Customer Reservation
+              Direct Booking
             </button>
             <button
               onClick={() => setActiveTab('confirmation')}
@@ -228,15 +276,15 @@ export default function BookingForm({ schedule }: BookingFormProps) {
               )}
             >
               <Shield size={16} />
-              Agent Confirmation
+              Confirm Reservation
             </button>
           </div>
         </div>
       )}
 
       <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200 flex flex-col md:flex-row min-h-[500px]">
-        {/* Left Side: Seat Map (Only for Reservation) */}
-        {activeTab === 'reservation' && (
+        {/* Left Side: Seat Map (for customers or agent direct booking) */}
+        {(!user || activeTab === 'booking') && (
           <div className="p-6 md:p-8 bg-gray-50 border-r border-gray-200 md:w-1/2">
             <h3 className="text-lg font-bold text-gray-900 mb-4">Select Seats</h3>
             {loadingSeats ? (
@@ -259,7 +307,7 @@ export default function BookingForm({ schedule }: BookingFormProps) {
         )}
 
         {/* Right Side: Form */}
-        <div className={clsx('p-6 md:p-8 flex flex-col', activeTab === 'reservation' ? 'md:w-1/2' : 'w-full')}>
+        <div className={clsx('p-6 md:p-8 flex flex-col', (!user || activeTab === 'booking') ? 'md:w-1/2' : 'w-full')}>
           <div className="flex items-center gap-3 mb-6">
             <button 
               onClick={() => router.back()} 
@@ -268,7 +316,7 @@ export default function BookingForm({ schedule }: BookingFormProps) {
               <ArrowLeft size={24} />
             </button>
             <h2 className="text-xl font-bold text-gray-900">
-              {activeTab === 'reservation' ? 'Passenger Details' : 'Confirm Reservation'}
+              {!user ? 'Passenger Details' : (activeTab === 'booking' ? 'Passenger Details' : 'Confirm Reservation')}
             </h2>
           </div>
 
@@ -280,9 +328,9 @@ export default function BookingForm({ schedule }: BookingFormProps) {
             </div>
           )}
 
-          {activeTab === 'reservation' ? (
-            /* Reservation Form */
-            <form onSubmit={reservationForm.handleSubmit(onReservationSubmit)} className="space-y-5 flex-1 flex flex-col">
+          {(!user || activeTab === 'booking') ? (
+            /* Booking/Reservation Form */
+            <form onSubmit={reservationForm.handleSubmit(user ? onDirectBookingSubmit : onReservationSubmit)} className="space-y-5 flex-1 flex flex-col">
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Passenger Name</label>
@@ -331,12 +379,12 @@ export default function BookingForm({ schedule }: BookingFormProps) {
                   disabled={isSubmitting || selectedSeats.length === 0}
                   className="w-full justify-center py-3 text-lg shadow-blue-500/30 hover:shadow-blue-500/50"
                 >
-                  {isSubmitting ? 'Processing...' : 'Reserve Seats'}
+                  {user ? 'Book Seats' : 'Reserve Seats'}
                 </PrimaryButton>
               </div>
             </form>
           ) : (
-            /* Confirmation Form */
+            /* Agent Confirmation Form */
             <div className="max-w-md mx-auto w-full">
               {!foundReservation ? (
                 <form onSubmit={confirmationForm.handleSubmit(onSearchReservation)} className="space-y-6">

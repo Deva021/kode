@@ -159,11 +159,33 @@ export async function getReservationByToken(token: string): Promise<{ tickets: a
  */
 export async function confirmReservation(token: string): Promise<{ success: boolean; error?: string }> {
   try {
-    // Update status to 'booked'
+    // First, check if tickets exist and their current status
+    const { data: existingTickets, error: fetchError } = await supabase
+      .from('tickets')
+      .select('status')
+      .eq('reservation_token', token);
+
+    if (fetchError) {
+      console.error('Error fetching reservation:', fetchError);
+      return { success: false, error: 'Failed to fetch reservation' };
+    }
+
+    if (!existingTickets || existingTickets.length === 0) {
+      return { success: false, error: 'Invalid token or reservation not found' };
+    }
+
+    // Check if any tickets are already booked
+    const alreadyBooked = existingTickets.some(t => t.status === 'booked');
+    if (alreadyBooked) {
+      return { success: false, error: 'This reservation has already been confirmed' };
+    }
+
+    // Only update tickets that are in 'reserved' status
     const { error } = await supabase
       .from('tickets')
       .update({ status: 'booked' })
-      .eq('reservation_token', token);
+      .eq('reservation_token', token)
+      .eq('status', 'reserved');
 
     if (error) {
       console.error('Error confirming reservation:', error);
@@ -173,6 +195,76 @@ export async function confirmReservation(token: string): Promise<{ success: bool
     return { success: true };
   } catch (err) {
     return { success: false, error: 'Unexpected error' };
+  }
+}
+
+/**
+ * Create a direct booking (Agent only - no reservation, immediate confirmation)
+ */
+export async function createDirectBooking(
+  scheduleId: number,
+  passengerName: string,
+  seatNumbers: number[],
+  phoneNumber: string,
+  email?: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (seatNumbers.length === 0) {
+      return { success: false, error: 'No seats selected' };
+    }
+
+    // 1. Check if any seat is already taken
+    const { data: existingTickets, error: checkError } = await supabase
+      .from('tickets')
+      .select('seat_number')
+      .eq('schedule_id', scheduleId)
+      .in('seat_number', seatNumbers)
+      .in('status', ['booked', 'reserved']);
+
+    if (checkError) throw checkError;
+
+    if (existingTickets && existingTickets.length > 0) {
+      const takenSeats = existingTickets.map(t => t.seat_number).join(', ');
+      return { success: false, error: `Seats ${takenSeats} are already taken.` };
+    }
+
+    // 2. Insert tickets directly as 'booked' (no token, no expiration)
+    const newTickets = seatNumbers.map(seat => ({
+      schedule_id: scheduleId,
+      passenger_name: passengerName,
+      seat_number: seat,
+      status: 'booked',
+      reservation_token: null,
+      reservation_expires_at: null
+    }));
+
+    const { error: insertError } = await supabase
+      .from('tickets')
+      .insert(newTickets);
+
+    if (insertError) {
+      console.error('Error creating direct booking:', insertError);
+      return { success: false, error: 'Failed to create booking' };
+    }
+
+    // 3. Update schedule booked_seats count
+    const { data: schedule, error: scheduleError } = await supabase
+      .from('schedules')
+      .select('booked_seats')
+      .eq('id', scheduleId)
+      .single();
+
+    if (!scheduleError && schedule) {
+      await supabase
+        .from('schedules')
+        .update({ booked_seats: schedule.booked_seats + seatNumbers.length })
+        .eq('id', scheduleId);
+    }
+
+    return { success: true };
+  } catch (err) {
+    console.error('Direct booking error:', err);
+    return { success: false, error: 'An unexpected error occurred' };
   }
 }
 
